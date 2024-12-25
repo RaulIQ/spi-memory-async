@@ -37,11 +37,14 @@ search  = "https://docs.rs/spi-memory/[a-z0-9\\.-]+"
 replace = "https://docs.rs/spi-memory/{{version}}"
 
 [dependencies]
-embedded-hal = "0.2.3"
+embedded-hal = "^1.0.0"
 log = { version = "0.4.6", optional = true }
 bitflags = "1.0.4"
+embedded-hal-async = "^1.0.0"
 
 [dev-dependencies]
+defmt = "0.3.5"
+defmt-rtt = "0.4.0"
 cortex-m = "0.6.0"
 cortex-m-rt = "0.6.8"
 cortex-m-semihosting = "0.3.3"

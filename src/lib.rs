@@ -21,11 +21,12 @@ mod utils;
 
 pub use crate::error::Error;
 
-use embedded_hal::blocking::spi::Transfer;
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::spi::SpiBus;
+use embedded_hal::digital::OutputPin;
+use embedded_hal_async::spi::SpiBus as AsyncSpiBus;
 
 /// A trait for reading operations from a memory chip.
-pub trait Read<Addr, SPI: Transfer<u8>, CS: OutputPin> {
+pub trait Read<Addr, SPI: SpiBus, CS: OutputPin> {
     /// Reads bytes from a memory chip.
     ///
     /// # Parameters
@@ -34,8 +35,17 @@ pub trait Read<Addr, SPI: Transfer<u8>, CS: OutputPin> {
     fn read(&mut self, addr: Addr, buf: &mut [u8]) -> Result<(), Error<SPI, CS>>;
 }
 
+pub trait AsyncRead<Addr, SPI: AsyncSpiBus + SpiBus, CS: OutputPin> {
+    /// Reads bytes from a memory chip.
+    ///
+    /// # Parameters
+    /// * `addr`: The address to start reading at.
+    /// * `buf`: The buffer to read `buf.len()` bytes into.
+    async fn async_read(&mut self, addr: Addr, buf: &mut [u8]) -> Result<(), Error<SPI, CS>>;
+}
+
 /// A trait for writing and erasing operations on a memory chip.
-pub trait BlockDevice<Addr, SPI: Transfer<u8>, CS: OutputPin> {
+pub trait BlockDevice<Addr, SPI: SpiBus, CS: OutputPin> {
     /// Erases sectors from the memory chip.
     ///
     /// # Parameters
@@ -56,4 +66,14 @@ pub trait BlockDevice<Addr, SPI: Transfer<u8>, CS: OutputPin> {
     /// * `addr`: The address to write to.
     /// * `data`: The bytes to write to `addr`.
     fn write_bytes(&mut self, addr: Addr, data: &mut [u8]) -> Result<(), Error<SPI, CS>>;
+}
+
+pub trait AsyncDevice<Addr, SPI: AsyncSpiBus + SpiBus, CS: OutputPin> {
+    /// Writes bytes onto the memory chip. This method is supposed to assume that the sectors
+    /// it is writing to have already been erased and should not do any erasing themselves.
+    ///
+    /// # Parameters
+    /// * `addr`: The address to write to.
+    /// * `data`: The bytes to write to `addr`.
+    async fn async_write_bytes(&mut self, addr: Addr, data: &mut [u8]) -> Result<(), Error<SPI, CS>>;
 }
