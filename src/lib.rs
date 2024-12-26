@@ -21,12 +21,12 @@ mod utils;
 
 pub use crate::error::Error;
 
-use embedded_hal::spi::SpiBus;
+use embedded_hal::spi::SpiDevice;
 use embedded_hal::digital::OutputPin;
-use embedded_hal_async::spi::SpiBus as AsyncSpiBus;
+use embedded_hal_async::spi::SpiDevice as AsyncSpiDevice;
 
 /// A trait for reading operations from a memory chip.
-pub trait Read<Addr, SPI: SpiBus, CS: OutputPin> {
+pub trait Read<Addr, SPI: SpiDevice, CS: OutputPin> {
     /// Reads bytes from a memory chip.
     ///
     /// # Parameters
@@ -35,7 +35,7 @@ pub trait Read<Addr, SPI: SpiBus, CS: OutputPin> {
     fn read(&mut self, addr: Addr, buf: &mut [u8]) -> Result<(), Error<SPI, CS>>;
 }
 
-pub trait AsyncRead<Addr, SPI: AsyncSpiBus + SpiBus, CS: OutputPin> {
+pub trait AsyncRead<Addr, SPI: AsyncSpiDevice + SpiDevice, CS: OutputPin> {
     /// Reads bytes from a memory chip.
     ///
     /// # Parameters
@@ -45,7 +45,7 @@ pub trait AsyncRead<Addr, SPI: AsyncSpiBus + SpiBus, CS: OutputPin> {
 }
 
 /// A trait for writing and erasing operations on a memory chip.
-pub trait BlockDevice<Addr, SPI: SpiBus, CS: OutputPin> {
+pub trait BlockDevice<Addr, SPI: SpiDevice, CS: OutputPin> {
     /// Erases sectors from the memory chip.
     ///
     /// # Parameters
@@ -68,7 +68,7 @@ pub trait BlockDevice<Addr, SPI: SpiBus, CS: OutputPin> {
     fn write_bytes(&mut self, addr: Addr, data: &mut [u8]) -> Result<(), Error<SPI, CS>>;
 }
 
-pub trait AsyncDevice<Addr, SPI: AsyncSpiBus + SpiBus, CS: OutputPin> {
+pub trait AsyncDevice<Addr, SPI: AsyncSpiDevice + SpiDevice, CS: OutputPin> {
     /// Writes bytes onto the memory chip. This method is supposed to assume that the sectors
     /// it is writing to have already been erased and should not do any erasing themselves.
     ///

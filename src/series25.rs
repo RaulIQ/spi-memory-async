@@ -7,9 +7,9 @@ use core::convert::TryInto;
 use core::fmt;
 // use embedded_hal::blocking::spi::Transfer;
 use embedded_hal::digital::OutputPin;
-use embedded_hal::spi::{SpiBus};
+use embedded_hal::spi::{SpiDevice};
 
-use embedded_hal_async::spi::SpiBus as AsyncSpiBus;
+use embedded_hal_async::spi::SpiDevice as AsyncSpiDevice;
 
 
 /// 3-Byte JEDEC manufacturer and device identification.
@@ -110,6 +110,25 @@ bitflags! {
     }
 }
 
+pub struct DummyCsPin;
+
+impl embedded_hal::digital::ErrorType for DummyCsPin {
+    type Error = core::convert::Infallible;
+}
+
+impl embedded_hal::digital::OutputPin for DummyCsPin {
+    #[inline(always)]
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+
 /// Driver for 25-series SPI Flash chips.
 ///
 /// # Type Parameters
@@ -123,7 +142,7 @@ pub struct Flash<SPI, CS: OutputPin> {
     cs: CS,
 }
 
-impl<SPI: SpiBus, CS: OutputPin> Flash<SPI, CS> {
+impl<SPI: SpiDevice, CS: OutputPin> Flash<SPI, CS> {
     /// Creates a new 25-series flash driver.
     ///
     /// # Parameters
@@ -187,7 +206,7 @@ impl<SPI: SpiBus, CS: OutputPin> Flash<SPI, CS> {
     }
 }
 
-impl<SPI: SpiBus, CS: OutputPin> Read<u32, SPI, CS> for Flash<SPI, CS> {
+impl<SPI: SpiDevice, CS: OutputPin> Read<u32, SPI, CS> for Flash<SPI, CS> {
     /// Reads flash contents into `buf`, starting at `addr`.
     ///
     /// Note that `addr` is not fully decoded: Flash chips will typically only
@@ -220,7 +239,7 @@ impl<SPI: SpiBus, CS: OutputPin> Read<u32, SPI, CS> for Flash<SPI, CS> {
     }
 }
 
-impl<SPI: AsyncSpiBus + SpiBus, CS: OutputPin> AsyncRead<u32, SPI, CS> for Flash<SPI, CS> {
+impl<SPI: AsyncSpiDevice + SpiDevice, CS: OutputPin> AsyncRead<u32, SPI, CS> for Flash<SPI, CS> {
     async fn async_read(&mut self, addr: u32, buf: &mut [u8]) -> Result<(), Error<SPI, CS>> {
         // TODO what happens if `buf` is empty?
 
@@ -233,17 +252,17 @@ impl<SPI: AsyncSpiBus + SpiBus, CS: OutputPin> AsyncRead<u32, SPI, CS> for Flash
 
         self.cs.set_low().map_err(Error::Gpio)?;
         // let mut spi_result = self.spi.transfer_in_place(&mut cmd_buf);
-        let mut spi_result = AsyncSpiBus::transfer_in_place(&mut self.spi, &mut cmd_buf).await;
+        let mut spi_result = AsyncSpiDevice::transfer_in_place(&mut self.spi, &mut cmd_buf).await;
         if spi_result.is_ok() {
             // spi_result = self.spi.transfer_in_place(buf);
-            spi_result = AsyncSpiBus::transfer_in_place(&mut self.spi, buf).await;
+            spi_result = AsyncSpiDevice::transfer_in_place(&mut self.spi, buf).await;
         }
         self.cs.set_high().map_err(Error::Gpio)?;
         spi_result.map(|_| ()).map_err(Error::Spi)
     }
 }
 
-impl<SPI: SpiBus, CS: OutputPin> BlockDevice<u32, SPI, CS> for Flash<SPI, CS> {
+impl<SPI: SpiDevice, CS: OutputPin> BlockDevice<u32, SPI, CS> for Flash<SPI, CS> {
     fn erase_sectors(&mut self, addr: u32, amount: usize) -> Result<(), Error<SPI, CS>> {
         for c in 0..amount {
             self.write_enable()?;
@@ -295,7 +314,7 @@ impl<SPI: SpiBus, CS: OutputPin> BlockDevice<u32, SPI, CS> for Flash<SPI, CS> {
     }
 }
 
-impl<SPI: AsyncSpiBus + SpiBus, CS: OutputPin> AsyncDevice<u32, SPI, CS> for Flash<SPI, CS> {
+impl<SPI: AsyncSpiDevice + SpiDevice, CS: OutputPin> AsyncDevice<u32, SPI, CS> for Flash<SPI, CS> {
     async fn async_write_bytes(&mut self, addr: u32, data: &mut [u8]) -> Result<(), Error<SPI, CS>> {
         for (c, chunk) in data.chunks_mut(256).enumerate() {
             self.write_enable()?;
@@ -310,10 +329,10 @@ impl<SPI: AsyncSpiBus + SpiBus, CS: OutputPin> AsyncDevice<u32, SPI, CS> for Fla
 
             self.cs.set_low().map_err(Error::Gpio)?;
             // let mut spi_result = self.spi.transfer_in_place(&mut cmd_buf);
-            let mut spi_result = AsyncSpiBus::transfer_in_place(&mut self.spi, &mut cmd_buf).await;
+            let mut spi_result = AsyncSpiDevice::transfer_in_place(&mut self.spi, &mut cmd_buf).await;
             if spi_result.is_ok() {
                 // spi_result = self.spi.transfer_in_place(chunk);
-                spi_result = AsyncSpiBus::transfer_in_place(&mut self.spi, chunk).await;
+                spi_result = AsyncSpiDevice::transfer_in_place(&mut self.spi, chunk).await;
             }
             self.cs.set_high().map_err(Error::Gpio)?;
             spi_result.map(|_| ()).map_err(Error::Spi)?;
